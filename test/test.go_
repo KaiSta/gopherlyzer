@@ -1,0 +1,16 @@
+package main
+
+func foo(a, b chan int) {
+   b <- 42
+   <-a
+}
+
+func main() {
+    a := make(chan int)
+    b := make(chan int)
+
+    go foo(a,b)
+
+    a <- 42
+    <-b 
+}

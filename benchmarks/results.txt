@@ -1,0 +1,131 @@
+Our tool:
+
+Deadlock
+Threads: [a (b.c) (b.c) (d.d)]
+(((Fork(a).Fork((b.c))).(Fork((b.c)).Fork(ε))).(d.d))
+map[b:a a:b d:c c:d]
+7
+false d [a (b.c) (b.c) (d.d)]
+false abb [ε c (b.c) (d.d)]
+false abcdd [ε (b.c) ε d]
+false abcdb [ε (b.c) ε d]
+Succs: 0
+Abort: 0
+Stopped: 7
+
+20.876427ms
+
+
+FanIn
+Threads: [(a)* (b)* (((c.d)+(e.d)))* (f)*]
+((Fork((a)*).Fork((b)*)).(Fork((((c.d)+(e.d)))*).(f)*))
+map[c:a a:c e:b b:e f:d d:f]
+3
+false f [(a)* (b)* (((c.d)+(e.d)))* (f)*]
+true acdf [(a)* (b)* (((c.d)+(e.d)))* (f)*]
+true bedf [(a)* (b)* (((c.d)+(e.d)))* (f)*]
+Succs: 2
+Abort: 0
+Stopped: 1
+
+28.812885ms
+
+
+Philo
+Threads: [(((a.a).(b.b)))* b b (((a.a).(b.b)))*]
+((Fork((((a.a).(b.b)))*).Fork(b)).(Fork(b).(((a.a).(b.b)))*))
+map[b:a a:b]
+12
+false babaabab [((b.b).(((a.a).(b.b)))*) ε ε (((a.a).(b.b)))*]
+false abbaa [((a.(b.b)).(((a.a).(b.b)))*) ε ε ((a.(b.b)).(((a.a).(b.b)))*)]
+false baaba [((a.(b.b)).(((a.a).(b.b)))*) ε ε ((a.(b.b)).(((a.a).(b.b)))*)]
+false ababbaba [(((a.a).(b.b)))* ε ε ((b.b).(((a.a).(b.b)))*)]
+Succs: 0
+Abort: 0
+Stopped: 12
+
+30.878619ms
+
+PrimeSieve
+Threads: [((a.c).e) (g)* ((a.(b+ε)))* ((c.(d+ε)))* ((e.(f+ε)))*]
+(((Fork(((c.(d+ε)))*).Fork(((e.(f+ε)))*)).(Fork(((a.(b+ε)))*).Fork((g)*))).((a.c).e))
+map[a:g c:b b:c e:d d:e g:a]
+6
+false e [((a.c).e) (g)* ((a.(b+ε)))* ((c.(d+ε)))* ((e.(f+ε)))*]
+false agga [(c.e) (g)* ((b+ε).((a.(b+ε)))*) ((c.(d+ε)))* ((e.(f+ε)))*]
+false gae [((a.c).e) (g)* ((b+ε).((a.(b+ε)))*) ((c.(d+ε)))* ((e.(f+ε)))*]
+false c [((a.c).e) (g)* ((a.(b+ε)))* ((c.(d+ε)))* ((e.(f+ε)))*]
+false gabcc [((a.c).e) (g)* (ε.((a.(b+ε)))*) ((d+ε).((c.(d+ε)))*) ((e.(f+ε)))*]
+false gabcdeag [(c.e) (g)* (ε.((a.(b+ε)))*) (ε.((c.(d+ε)))*) ((f+ε).((e.(f+ε)))*)]
+Succs: 0
+Abort: 0
+Stopped: 6
+
+34.292022ms
+
+PrimeSieveSingle
+2
+true ac [((a.(b+ε)))* ε (c)*]
+false acac [((b+ε).((a.(b+ε)))*) a (c)*]
+Succs: 1
+Abort: 0
+Stopped: 1
+Complete: 13.552372ms
+
+
+Dingo:
+
+Deadlock
+Machine 4: False
+Machine 1: False
+Machine 3: True  //Work
+Machine 0: False
+Machine 5: False
+Machine 2: False
+
+155ms
+
+
+FanIn
+Machine 3: True
+Machine 4: True
+Machine 5: True
+Machine 2: True
+Machine 1: True
+Machine 0: True
+Machine 6: True
+
+107ms
+
+
+Machine 3: True	 //forkgivers
+Machine 2: True
+Machine 0: False //chan
+Machine 4: False //philo
+Machine 1: False //philo
+
+480ms
+
+
+Primesieve
+Machine 0: False
+Machine 8: True  // prime <-ch2
+Machine 5: False
+Machine 6: False
+Machine 4: False
+Machine 1: False
+Machine 2: False
+Machine 7: False
+Machine 3: False
+
+8.339s
+
+PrimeSieveSingle
+
+Machine 4: False
+Machine 3: False
+Machine 2: True  // main thread weil er einmal von generate mit sicherheit empfang kann
+Machine 0: False
+Machine 1: False
+
+88ms
