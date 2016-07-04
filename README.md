@@ -19,11 +19,15 @@ examples.
 ## How to use
 
 Configure the Go environment:
+
 export GOROOT=/usr/local/go
-export GOPATH=`*path_to_workspace*/bin`
+
+export GOPATH=`*path_to_workspace*/bin
+`
 export PATH=$GOROOT/bin:$GOPATH/bin:$PATH
 
 Install Go Oracle:
+
 go get golang.org/x/tools/cmd/oracle
 
 Running gopherlyzer:
