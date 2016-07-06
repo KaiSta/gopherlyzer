@@ -5,11 +5,8 @@
 It's the first beta implementation of our analysis described in [Static Trace-Based Deadlock Analysis for
 Synchronous Mini-Go](http://www.home.hs-karlsruhe.de/~suma0002/publications/TraceBasedDeadlockAnalysisMiniGo.pdf).
 
-* The current prototyp can't create a correct forkable expression for everything that can be written in Go. The parsing component needs to be enhanced so 
-it can handle more code constructs, for example anonymous functions or breaks that use labels.
-
-* The results from the prototype can be wrong in some cases because the described system in our publication covers 
-more than what is currently implemented and there are still some implementation errors. 
+The current prototype only covers a subset of the Go language. See our examples.
+We plan to add support for full recursion, anonymous functions, labels etc. in the near future.
 
 ## Description
 
