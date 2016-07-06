@@ -2,8 +2,14 @@
 
 ## Beta Release
 
-It's the first beta implementation of our analysis described in *Static Trace-Based Deadlock Analysis for
-Synchronous Mini-Go*. There are still bugs we intend to fix.
+It's the first beta implementation of our analysis described in [Static Trace-Based Deadlock Analysis for
+Synchronous Mini-Go](http://www.home.hs-karlsruhe.de/~suma0002/publications/TraceBasedDeadlockAnalysisMiniGo.pdf).
+
+* The current prototyp can't create a correct forkable expression for everything that can be written in Go. The parsing component needs to be enhanced so 
+it can handle more code constructs, for example anonymous functions or breaks that use labels.
+
+* The results from the prototype can be wrong in some cases because the described system in our publication covers 
+more than what is currently implemented and there are still some implementation errors. 
 
 ## Description
 
@@ -22,8 +28,8 @@ Configure the Go environment:
 
 export GOROOT=/usr/local/go
 
-export GOPATH=`*path_to_workspace*/bin
-`
+export GOPATH=`*path_to_workspace*`/bin
+
 export PATH=$GOROOT/bin:$GOPATH/bin:$PATH
 
 Install Go Oracle:
