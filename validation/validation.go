@@ -30,13 +30,15 @@ func Rscontains(c types.R, rs []types.R) bool {
 }
 
 type machine2 struct {
-	Threads  []types.R
-	PMap     map[types.R]types.R
-	StateMap map[types.R]int
-	Trace    string
-	Succ     bool
-	Stop     bool
-	Abort    bool
+	Threads        []types.R
+	PMap           map[types.R]types.R
+	CMap           map[types.R][]types.R
+	ClosedChannels []types.R
+	StateMap       map[types.R]int
+	Trace          string
+	Succ           bool
+	Stop           bool
+	Abort          bool
 }
 
 type SyncPoint struct {
@@ -90,7 +92,18 @@ func (mach *machine2) syncAble() ([]SyncPoint, map[int][]types.R) {
 			skip := false
 			q := r
 
-			if !skip {
+			//check for closer
+			isCloser := false
+			switch vu := r.(type) {
+			case types.Sym:
+				_, ok := mach.CMap[vu]
+				if ok {
+					syncpoints = append(syncpoints, SyncPoint{n.ThreadId, -42, vu})
+					isCloser = true
+				}
+			}
+
+			if !skip && !isCloser {
 				p := mach.PMap[q]
 				f := false
 				for _, m := range threadNext { //find a partner thread
@@ -167,7 +180,7 @@ func (mach *machine2) syncAble() ([]SyncPoint, map[int][]types.R) {
 	return syncpoints, SelectSp
 }
 func (m *machine2) sync(sp SyncPoint, selectsp map[int][]types.R) { // syncpoint can contain something like Alt{a, SKIP}, first try what happens if SKIP is added, only if it fails add a
-	if sp.T2Id != -1 {
+	if sp.T2Id > -1 {
 		m.StateMap[types.Seq{types.Phi(sp.T1Id), m.Threads[sp.T1Id]}] = 1
 		m.StateMap[types.Seq{types.Phi(sp.T2Id), m.Threads[sp.T2Id]}] = 1
 
@@ -177,39 +190,54 @@ func (m *machine2) sync(sp SyncPoint, selectsp map[int][]types.R) { // syncpoint
 		m.Threads[sp.T2Id] = m.Threads[sp.T2Id].Deriv(p)
 		m.Trace += p.String()
 
-        //SPECIAL CASE FOR SELECT
+		//SPECIAL CASE FOR SELECT
 
-        if len(selectsp[sp.T1Id]) > 0 {
-            tmp := selectsp[sp.T1Id]
-            for _, xx := range tmp {
-                if xx != sp.Symbol {
-                    pa := m.PMap[xx]
-                    
-                    for j := range m.Threads {
-                        nex := m.Threads[j].NextSym()
-                        if Rscontains(pa, nex) {
-                            m.Threads[j] = m.Threads[j].Deriv(pa)
-                            break
-                        }
-                    }
-                }
-            }
-        } else if len(selectsp[sp.T2Id]) > 0 {
-            tmp := selectsp[sp.T2Id]
-            for _, xx := range tmp {
-                if xx != p {
-                    pa := m.PMap[xx]
-                    
-                    for j := range m.Threads {
-                        nex := m.Threads[j].NextSym()
-                        if Rscontains(pa, nex) {
-                            m.Threads[j] = m.Threads[j].Deriv(pa)
-                            break
-                        }
-                    }
-                }
-            }
-        }
+		if len(selectsp[sp.T1Id]) > 0 {
+			tmp := selectsp[sp.T1Id]
+			for _, xx := range tmp {
+				if xx != sp.Symbol {
+					pa := m.PMap[xx]
+
+					for j := range m.Threads {
+						nex := m.Threads[j].NextSym()
+						if Rscontains(pa, nex) {
+							m.Threads[j] = m.Threads[j].Deriv(pa)
+							break
+						}
+					}
+				}
+			}
+		} else if len(selectsp[sp.T2Id]) > 0 {
+			tmp := selectsp[sp.T2Id]
+			for _, xx := range tmp {
+				if xx != p {
+					pa := m.PMap[xx]
+
+					for j := range m.Threads {
+						nex := m.Threads[j].NextSym()
+						if Rscontains(pa, nex) {
+							m.Threads[j] = m.Threads[j].Deriv(pa)
+							break
+						}
+					}
+				}
+			}
+		}
+
+		count := 0
+		for _, t := range m.Threads {
+			if t.Nullable() {
+				count++
+			}
+		}
+		if count == len(m.Threads) {
+			m.Succ = true
+		}
+	} else if sp.T2Id == -42 {
+		fmt.Println("close case")
+		m.Trace += sp.Symbol.String()
+		m.Threads[sp.T1Id] = m.Threads[sp.T1Id].Deriv(sp.Symbol)
+		m.ClosedChannels = append(m.ClosedChannels, m.CMap[sp.Symbol]...)
 
 		count := 0
 		for _, t := range m.Threads {
@@ -241,7 +269,8 @@ func run3(initM machine2) {
 			}
 
 			syncpoints, selectSp := machines[i].syncAble()
-			//fmt.Println(syncpoints, machines[i].Threads, machines[i].Trace)
+			fmt.Println("SYNCPOINTS", syncpoints, machines[i].Threads, machines[i].Trace)
+
 			if len(syncpoints) == 0 {
 				machines[i].Stop = true
 			} else {
@@ -443,7 +472,7 @@ func Run(r types.R, pmap map[types.R]types.R) {
 	run([]types.R{r}, partnerFilter, pmap)
 }
 
-func Run2(threads []types.R, pmap map[types.R]types.R) {
-	m := machine2{Threads: threads, PMap: pmap, StateMap: make(map[types.R]int)}
+func Run2(threads []types.R, pmap map[types.R]types.R, cmap map[types.R][]types.R) {
+	m := machine2{Threads: threads, PMap: pmap, CMap: cmap, StateMap: make(map[types.R]int), ClosedChannels: make([]types.R, 0)}
 	run3(m)
 }

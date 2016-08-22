@@ -5,9 +5,10 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"oracleAPI"
 	"path/filepath"
 	"reflect"
+
+	"../oracleAPI"
 )
 
 type Simplifier struct {
@@ -65,13 +66,20 @@ func (s *Simplifier) Parse(filePath string) map[string]Callgraph2 {
 					switch z := y.X.(type) {
 					case *ast.CallExpr:
 						n := s.getValue(z)
-						tmp2.Calls = append(tmp2.Calls, n)
+						if n == "close" {
+							if r, o := s.handleClose(z); r {
+								tmp2.ChanOps = append(tmp2.ChanOps, o)
+								tmp2.AllOps = append(tmp2.AllOps, o)
+							}
+						} else {
+							tmp2.Calls = append(tmp2.Calls, n)
 
-						var o Operation
-						o.Type = "Call"
-						o.Name = fmt.Sprintf("%v.%v:%v", s.PackageName, n, 0)
-						o.Op = "()"
-						tmp2.AllOps = append(tmp2.AllOps, o)
+							var o Operation
+							o.Type = "Call"
+							o.Name = fmt.Sprintf("%v.%v:%v", s.PackageName, n, 0)
+							o.Op = "()"
+							tmp2.AllOps = append(tmp2.AllOps, o)
+						}
 
 					case *ast.UnaryExpr:
 						if r, o := s.handleUnaryExpr(z); r {
@@ -106,7 +114,7 @@ func (s *Simplifier) Parse(filePath string) map[string]Callgraph2 {
 					res := false
 					for _, a := range y.Body.List {
 						if r, o := s.handleCommClaus(a.(*ast.CommClause)); r {
-					//		fmt.Println("PARSER", o)
+							//		fmt.Println("PARSER", o)
 							res = true
 							opSelect.Ops = append(opSelect.Ops, o)
 						}
@@ -177,6 +185,7 @@ func (s *Simplifier) handleSend(n *ast.SendStmt) (bool, Operation) {
 
 	oracle := oracler.New(oraclePath, s.Path, "./"+filepath.Dir(s.Path))
 	p := oracle.GetPeers("json", pos)
+	//	fmt.Println("SEND", pos, p.PeerEntries.Allocs)
 
 	res := false
 	var resOps Operation
@@ -186,6 +195,27 @@ func (s *Simplifier) handleSend(n *ast.SendStmt) (bool, Operation) {
 		l, _ := oracle.LineNColumn(p.PeerEntries.Allocs[i])
 		res = true
 		resOps.Ops = append(resOps.Ops, Operation{Type: "Snd", Pos: int(l), Name: fmt.Sprintf("%v.%v:%v", s.PackageName, "", l), Op: "!"})
+	}
+	return res, resOps
+}
+
+func (s *Simplifier) handleClose(n *ast.CallExpr) (bool, Operation) {
+	pos := s.FSet.Position(n.Lparen).Offset
+	oraclePath := "oracle"
+
+	oracle := oracler.New(oraclePath, s.Path, "./"+filepath.Dir(s.Path))
+	p := oracle.GetPeers("json", pos+1)
+
+	//	fmt.Println("CLOSE", pos, p.PeerEntries.Allocs)
+
+	res := false
+	var resOps Operation
+	resOps.Type = "Op"
+
+	for i := range p.PeerEntries.Allocs {
+		l, _ := oracle.LineNColumn(p.PeerEntries.Allocs[i])
+		res = true
+		resOps.Ops = append(resOps.Ops, Operation{Type: "Close", Pos: int(l), Name: fmt.Sprintf("%v.%v:%v", s.PackageName, "", l), Op: "#"})
 	}
 	return res, resOps
 }
@@ -207,7 +237,7 @@ func (s *Simplifier) handleCommClaus(n *ast.CommClause) (bool, Operation) {
 						}
 					}
 				}
-			//	fmt.Println("SELECT2", r)
+				//	fmt.Println("SELECT2", r)
 				// switch valu := n.Body[0].(type) {
 				// case *ast.SendStmt:
 				// 	q, t := s.handleSend(valu)

@@ -1,24 +1,27 @@
 package febuilder
 
 import (
+	"fmt"
+
+	"../algorithm"
 	"../simplifier"
 	"../types"
-	"algorithm"
-    "fmt"
 )
 
 type state struct {
 	alpha         rune
 	signMap       map[string]rune
 	partnerMap    map[int]*algorithm.HashSet
+	closerMap     map[types.R][]types.R
 	expressionMap map[string]types.R
 	parseGraph    map[string]simplify.Callgraph2
 }
 
-func BuildExpression(parseGraph map[string]simplify.Callgraph2) (types.R, map[types.R]types.R, []types.R) {
-	status := state{'a', make(map[string]rune), make(map[int]*algorithm.HashSet),
+func BuildExpression(parseGraph map[string]simplify.Callgraph2) (types.R, map[types.R]types.R, []types.R, map[types.R][]types.R) {
+	status := state{'a', make(map[string]rune), make(map[int]*algorithm.HashSet), make(map[types.R][]types.R),
 		make(map[string]types.R), parseGraph}
-    threads := make([]types.R, 0)
+
+	threads := make([]types.R, 0)
 
 	for k, v := range status.parseGraph {
 		rs := make([]types.R, 0)
@@ -58,25 +61,25 @@ func BuildExpression(parseGraph map[string]simplify.Callgraph2) (types.R, map[ty
 		}
 		status.expressionMap[k] = status.makeSeqs(rs)
 	}
-    
-    for k, _ := range status.expressionMap {
-      //  if tmp := status.parseGraph[k]; tmp.NrRoots > 0 || k  == "main" {
-            if status.expressionMap[k] != types.Eps(1) {
-                threads = append(threads, status.expressionMap[k])
-            }
-            
-    //    }
-    }
+
+	for k, _ := range status.expressionMap {
+		//  if tmp := status.parseGraph[k]; tmp.NrRoots > 0 || k  == "main" {
+		if status.expressionMap[k] != types.Eps(1) {
+			threads = append(threads, status.expressionMap[k])
+		}
+
+		//    }
+	}
 
 	complete := make([]types.R, 0)
 	for k, v := range status.expressionMap {
 		if tmp := status.parseGraph[k]; tmp.NrRoots > 0 && k != "main" {
 			v = types.Fork{v}
-			status.expressionMap[k] = v	
+			status.expressionMap[k] = v
 		}
-        if status.expressionMap[k] != types.Eps(1) {
-            complete = append(complete, status.expressionMap[k])           
-        }       
+		if status.expressionMap[k] != types.Eps(1) {
+			complete = append(complete, status.expressionMap[k])
+		}
 	}
 
 	//sort the expression list so main is the last expression
@@ -105,7 +108,7 @@ func BuildExpression(parseGraph map[string]simplify.Callgraph2) (types.R, map[ty
 			}
 		}
 	}
-	return completeFE, pMap, threads
+	return completeFE, pMap, threads, status.closerMap
 }
 
 func (s *state) makeSeqs(rs []types.R) types.R {
@@ -179,6 +182,7 @@ func (s *state) makeAlts2(rs []types.R) types.R {
 
 func (st *state) handleOp(op simplify.Operation) (innerRs []types.R) {
 	s := fmt.Sprintf("%v%v", op.Pos, op.Op)
+
 	z, ok := st.signMap[s]
 	if ok {
 		innerRs = append(innerRs, types.Sym(z))
@@ -190,14 +194,29 @@ func (st *state) handleOp(op simplify.Operation) (innerRs []types.R) {
 		st.signMap[s] = st.alpha
 		innerRs = append(innerRs, types.Sym(st.alpha))
 		tmp, ok := st.partnerMap[op.Pos]
-		if !ok {
-			tmp = algorithm.NewHashSet()
+		if op.Op != "#" {
+			if !ok {
+				tmp = algorithm.NewHashSet()
+			}
+			tmp.Insert(st.alpha)
+			st.partnerMap[op.Pos] = tmp
+		} else {
+			if ok {
+				localAlpha := types.Sym(st.alpha)
+				xtmp, ok2 := st.closerMap[localAlpha]
+				if !ok2 {
+					st.closerMap[localAlpha] = make([]types.R, 0)
+				}
+				for q := range tmp.Iterate() {
+					xtmp = append(xtmp, types.Sym(q.(rune)))
+				}
+				st.closerMap[localAlpha] = xtmp
+			}
 		}
-		tmp.Insert(st.alpha)
-		st.partnerMap[op.Pos] = tmp
+
 		st.alpha = st.alpha + 1
 	}
-    return
+	return
 }
 
 func (st *state) handleIf2(op simplify.Operation) types.R {
@@ -223,12 +242,12 @@ func (st *state) handleSelect(op simplify.Operation) types.R {
 		if len(y.Ops) > 0 {
 			if len(y.Ops) == 1 {
 				tmp := st.handleOp(y)
-			
+
 				//fmt.Println(tmp, y.Ops[0])
 				for i := range tmp {
 					tmp[i] = types.Seq{tmp[i], st.handleOp(y.Ops[0])[0]}
 				}
-				
+
 				selectCases = append(selectCases, tmp...)
 			} else {
 				rs := make([]types.R, 0)
@@ -237,11 +256,11 @@ func (st *state) handleSelect(op simplify.Operation) types.R {
 				}
 				selectCases = append(selectCases, st.makeSeqs(rs))
 			}
-			
+
 		} else {
 			selectCases = append(selectCases, st.handleOp(y)...)
 		}
-		
+
 	}
 	return st.makeAlts2(selectCases)
 }
