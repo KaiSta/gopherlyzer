@@ -33,6 +33,7 @@ type machine2 struct {
 	Threads        []types.R
 	PMap           map[types.R]types.R
 	CMap           map[types.R][]types.R
+	RMap           map[types.R]int
 	ClosedChannels []types.R
 	StateMap       map[types.R]int
 	Trace          string
@@ -60,12 +61,15 @@ func (m *machine2) clone() machine2 {
 
 func (mach *machine2) syncAble() ([]SyncPoint, map[int][]types.R) {
 	threadNext := make([]nextStr, 0)
+	opsOnClosed := make([]nextStr, 0)
 	SelectSp := make(map[int][]types.R)
 
 	for i := range mach.Threads {
 		tmp := mach.Threads[i].NextSym()
 		cleanedNext := make([]types.R, 0)
+		closedOps := make([]types.R, 0)
 		nextEl := nextStr{ThreadId: i}
+		nextClEl := nextStr{ThreadId: i}
 
 		for _, x := range tmp {
 			switch y := x.(type) {
@@ -75,12 +79,26 @@ func (mach *machine2) syncAble() ([]SyncPoint, map[int][]types.R) {
 				xa = append(xa, y...)
 				SelectSp[i] = xa
 				//fmt.Println(nextEl.SelectSp)
+			case types.Sym:
+				isClosed := false
+				for _, c := range mach.ClosedChannels {
+					if y == c.(types.Sym) {
+						isClosed = true
+					}
+				}
+				if !isClosed {
+					cleanedNext = append(cleanedNext, x)
+				} else {
+					closedOps = append(closedOps, x)
+				}
 			default:
 				cleanedNext = append(cleanedNext, x)
 			}
 		}
 		nextEl.Rs = cleanedNext
+		nextClEl.Rs = closedOps
 		threadNext = append(threadNext, nextEl)
+		opsOnClosed = append(opsOnClosed, nextClEl)
 		//threadNext = append(threadNext, nextStr{i, mach.Threads[i].NextSym()})
 	}
 
@@ -150,6 +168,13 @@ func (mach *machine2) syncAble() ([]SyncPoint, map[int][]types.R) {
 
 		}
 	}
+
+	for _, co := range opsOnClosed {
+		for _, c := range co.Rs {
+			syncpoints = append(syncpoints, SyncPoint{co.ThreadId, -43, c})
+		}
+	}
+
 	count := 0
 	for _, s := range syncpoints {
 		if s.T2Id == -1 {
@@ -234,8 +259,9 @@ func (m *machine2) sync(sp SyncPoint, selectsp map[int][]types.R) { // syncpoint
 			m.Succ = true
 		}
 	} else if sp.T2Id == -42 {
-		fmt.Println("close case")
+		//	fmt.Println("close case")
 		m.Trace += sp.Symbol.String()
+
 		m.Threads[sp.T1Id] = m.Threads[sp.T1Id].Deriv(sp.Symbol)
 		m.ClosedChannels = append(m.ClosedChannels, m.CMap[sp.Symbol]...)
 
@@ -247,6 +273,24 @@ func (m *machine2) sync(sp SyncPoint, selectsp map[int][]types.R) { // syncpoint
 		}
 		if count == len(m.Threads) {
 			m.Succ = true
+		}
+	} else if sp.T2Id == -43 {
+		//	fmt.Println("op on closed channel")
+		m.Trace += sp.Symbol.String()
+		_, ok := m.RMap[sp.Symbol]
+		if ok { //read on closed channel everythings fine
+			m.Threads[sp.T1Id] = m.Threads[sp.T1Id].Deriv(sp.Symbol)
+			count := 0
+			for _, t := range m.Threads {
+				if t.Nullable() {
+					count++
+				}
+			}
+			if count == len(m.Threads) {
+				m.Succ = true
+			}
+		} else {
+			m.Stop = true
 		}
 	} else {
 		if sp.Symbol != types.Eps(1) {
@@ -269,7 +313,7 @@ func run3(initM machine2) {
 			}
 
 			syncpoints, selectSp := machines[i].syncAble()
-			fmt.Println("SYNCPOINTS", syncpoints, machines[i].Threads, machines[i].Trace)
+			//	fmt.Println("SYNCPOINTS", syncpoints, machines[i].Threads, machines[i].Trace)
 
 			if len(syncpoints) == 0 {
 				machines[i].Stop = true
@@ -298,7 +342,7 @@ func run3(initM machine2) {
 		}
 	}
 
-	fmt.Println(len(machines))
+	fmt.Println("Machines created:", len(machines))
 	doubledismiss := make(map[string]int)
 	stopped, succs, aborted := 0, 0, 0
 	for i := range machines {
@@ -472,7 +516,8 @@ func Run(r types.R, pmap map[types.R]types.R) {
 	run([]types.R{r}, partnerFilter, pmap)
 }
 
-func Run2(threads []types.R, pmap map[types.R]types.R, cmap map[types.R][]types.R) {
-	m := machine2{Threads: threads, PMap: pmap, CMap: cmap, StateMap: make(map[types.R]int), ClosedChannels: make([]types.R, 0)}
+func Run2(threads []types.R, pmap map[types.R]types.R, cmap map[types.R][]types.R, rmap map[types.R]int) {
+	m := machine2{Threads: threads, PMap: pmap, CMap: cmap, StateMap: make(map[types.R]int),
+		ClosedChannels: make([]types.R, 0), RMap: rmap}
 	run3(m)
 }

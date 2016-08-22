@@ -13,13 +13,14 @@ type state struct {
 	signMap       map[string]rune
 	partnerMap    map[int]*algorithm.HashSet
 	closerMap     map[types.R][]types.R
+	ReaderMap     map[types.R]int
 	expressionMap map[string]types.R
 	parseGraph    map[string]simplify.Callgraph2
 }
 
-func BuildExpression(parseGraph map[string]simplify.Callgraph2) (types.R, map[types.R]types.R, []types.R, map[types.R][]types.R) {
+func BuildExpression(parseGraph map[string]simplify.Callgraph2) (types.R, map[types.R]types.R, []types.R, map[types.R][]types.R, map[types.R]int) {
 	status := state{'a', make(map[string]rune), make(map[int]*algorithm.HashSet), make(map[types.R][]types.R),
-		make(map[string]types.R), parseGraph}
+		make(map[types.R]int), make(map[string]types.R), parseGraph}
 
 	threads := make([]types.R, 0)
 
@@ -108,7 +109,7 @@ func BuildExpression(parseGraph map[string]simplify.Callgraph2) (types.R, map[ty
 			}
 		}
 	}
-	return completeFE, pMap, threads, status.closerMap
+	return completeFE, pMap, threads, status.closerMap, status.ReaderMap
 }
 
 func (s *state) makeSeqs(rs []types.R) types.R {
@@ -200,6 +201,10 @@ func (st *state) handleOp(op simplify.Operation) (innerRs []types.R) {
 			}
 			tmp.Insert(st.alpha)
 			st.partnerMap[op.Pos] = tmp
+
+			if op.Op == "?" {
+				st.ReaderMap[types.Sym(st.alpha)] = 1
+			}
 		} else {
 			if ok {
 				localAlpha := types.Sym(st.alpha)

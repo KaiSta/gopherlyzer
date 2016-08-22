@@ -2,6 +2,7 @@ package main
 
 func foo(x chan int) {
 	<-x
+	<-x
 }
 
 func main() {
@@ -9,4 +10,5 @@ func main() {
 	go foo(x)
 	x <- 42
 	close(x)
+	//x <- 42
 }
