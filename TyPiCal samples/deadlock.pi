@@ -1,0 +1,9 @@
+/*** TyPiCal: unsafe, but doesn't figure out that the first done?x1 is successful ***/
+new ch in
+new done in
+  ch!42   /*** Send ***/
+| ch?val.done!val  /*** Recv1 ***/
+| ch?val.done!val  /*** Recv2 ***/
+| *(new junk in junk!1 | junk?one)		   /*** Work ***/
+| done?x1.done?x2  /*** Main ***/
+

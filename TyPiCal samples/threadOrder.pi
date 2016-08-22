@@ -1,0 +1,23 @@
+/*** TyPiCal: unsafe
+
+Unlike Ng/Yoshida, the approach by KN properly takes care of
+the order among threads.
+
+Like some of the other examples we have seen,
+the debug information provided (by KN)
+can be improved.
+
+For example, KN reports
+
+new x in
+new y in 
+  x!!42. (x?v | y!!3 | y??vv)
+
+which seems a bit confusing.
+
+***/
+
+
+new x in
+new y in 
+  x!42. (x?v | y!3 | y?vv)

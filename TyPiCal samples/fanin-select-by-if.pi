@@ -1,0 +1,8 @@
+/*** TyPiCal: unsafe send operation, if select is modeled by if ***/
+new input1 in
+new input2 in
+new out in
+  * (input1!42)
+| * (input2!42)
+| * (if true then input1?z.out!z else input2?z.out!z)
+| * (out?drop)

@@ -1,0 +1,11 @@
+/*** TyPiCal: unsafe ***/
+new x in
+new y in
+  x!true	/*** provide1 ***/
+| y!false	/*** provide2 ***/
+| new z1 in
+  x?v.z1!v	/*** collect1 ***/
+| y?v.z1!v	/*** collect2 ***/
+| z1?dummy.
+  new z2 in
+    x?v.z2!v | y?v.x2!v | z2?dummy
