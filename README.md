@@ -6,7 +6,7 @@ It's the first beta implementation of our analysis described in [Static Trace-Ba
 Synchronous Mini-Go](http://www.home.hs-karlsruhe.de/~suma0002/publications/TraceBasedDeadlockAnalysisMiniGo.pdf).
 
 The current prototype only covers a subset of the Go language. See our examples.
-We plan to add support for full recursion, anonymous functions, labels etc. in the near future.
+We plan to add support for full recursion, anonymous functions, labels, close for channels etc. in the near future.
 
 ## Description
 
