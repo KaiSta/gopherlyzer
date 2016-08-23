@@ -59,6 +59,16 @@ func (m *machine2) clone() machine2 {
 	return new
 }
 
+func (m *machine2) isSucc() bool {
+	count := 0
+	for _, t := range m.Threads {
+		if t.Nullable() {
+			count++
+		}
+	}
+	return count == len(m.Threads)
+}
+
 func (mach *machine2) syncAble() ([]SyncPoint, map[int][]types.R) {
 	threadNext := make([]nextStr, 0)
 	opsOnClosed := make([]nextStr, 0)
@@ -248,47 +258,21 @@ func (m *machine2) sync(sp SyncPoint, selectsp map[int][]types.R) { // syncpoint
 				}
 			}
 		}
-
-		count := 0
-		for _, t := range m.Threads {
-			if t.Nullable() {
-				count++
-			}
-		}
-		if count == len(m.Threads) {
-			m.Succ = true
-		}
+		m.Succ = m.isSucc()
 	} else if sp.T2Id == -42 {
 		//	fmt.Println("close case")
 		m.Trace += sp.Symbol.String()
 
 		m.Threads[sp.T1Id] = m.Threads[sp.T1Id].Deriv(sp.Symbol)
 		m.ClosedChannels = append(m.ClosedChannels, m.CMap[sp.Symbol]...)
-
-		count := 0
-		for _, t := range m.Threads {
-			if t.Nullable() {
-				count++
-			}
-		}
-		if count == len(m.Threads) {
-			m.Succ = true
-		}
+		m.Succ = m.isSucc()
 	} else if sp.T2Id == -43 {
 		//	fmt.Println("op on closed channel")
 		m.Trace += sp.Symbol.String()
 		_, ok := m.RMap[sp.Symbol]
 		if ok { //read on closed channel everythings fine
 			m.Threads[sp.T1Id] = m.Threads[sp.T1Id].Deriv(sp.Symbol)
-			count := 0
-			for _, t := range m.Threads {
-				if t.Nullable() {
-					count++
-				}
-			}
-			if count == len(m.Threads) {
-				m.Succ = true
-			}
+			m.Succ = m.isSucc()
 		} else {
 			m.Stop = true
 		}
