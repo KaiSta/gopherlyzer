@@ -1,0 +1,6 @@
+/*** TyPiCal: unsafe sends, but indirect modeling of select ***/
+new x in
+new y in
+  x!true | y!false |
+  (if true then x?z else y?z )
+  

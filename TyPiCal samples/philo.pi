@@ -1,0 +1,6 @@
+/*** TyPiCal: unsafe, but this is a very crude model of the dining philosophers ***/
+new forks in
+  forks!1	/*** Give1 ***/
+| forks!1	/*** Give2 ***/
+| * (forks?f1. forks?f2. forks!f1. forks!f2)	/*** phil ***/
+| * (forks?f1. forks?f2. forks!f1. forks!f2)	/*** main ***/

@@ -1,0 +1,9 @@
+/*** TyPiCal: cannot analyze within resource limit ***/
+/*** incomplete model, less than primesieveSingle ***/
+new ch in
+  (new generate in generate!2 | *(generate?i.ch!i.generate!(i+1)))
+|
+new filter1 in new filter2 in new filter3 in
+  filter1?inp. filter2?out. filter3?prime.
+  inp?i. if i % prime != 0 then out!i else (new dev0 in dev0!i | dev0?x)
+| ch?prime. new ch1 in filter1!ch. filter2!ch1. filter3!prime
