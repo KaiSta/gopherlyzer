@@ -29,9 +29,9 @@ export GOPATH=`*path_to_workspace*`/bin
 
 export PATH=$GOROOT/bin:$GOPATH/bin:$PATH
 
-Install Go Oracle:
+Install Go Guru:
 
-go get golang.org/x/tools/cmd/oracle
+go get golang.org/x/tools/cmd/guru
 
 Running gopherlyzer:
 

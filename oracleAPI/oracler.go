@@ -47,11 +47,11 @@ func New(oraclepath, filepath, rootpath string) *OracleAPI {
 }
 
 func (o *OracleAPI) GetPeers(format string, charpos int) PeersMode {
-	cmd := exec.Command(o.OraclePath, fmt.Sprintf("-format=%v", format),
-		fmt.Sprintf("-pos=%v:#%v", o.FilePath, charpos), "peers",
-		o.RootPath)
+	cmd := exec.Command(o.OraclePath,
+		fmt.Sprintf("-%v", format), fmt.Sprintf("-scope=%s", o.RootPath),
+		"peers",
+		fmt.Sprintf("%v:#%v", o.FilePath, charpos))
 	cmd.Stderr = os.Stdout
-    
 
 	out, err := cmd.Output()
 	if err != nil {
@@ -123,13 +123,14 @@ func (o *OracleAPI) FindDefinition(line int64) int64 {
 }
 
 func (o *OracleAPI) FindVariableName(line int64) string {
-    
-    i := o.GetOffset(line, 0)
-    j := o.FindDefinition(line)
-    
-    cmd := exec.Command(o.OraclePath, "-format=json",
-		fmt.Sprintf("-pos=%v:#%v,#%v", o.FilePath, i,j), "definition",
-		o.RootPath)
+
+	i := o.GetOffset(line, 0)
+	j := o.FindDefinition(line)
+
+	cmd := exec.Command(o.OraclePath,
+		"-json", fmt.Sprintf("-scope=%v", o.RootPath),
+		"definition",
+		fmt.Sprintf("%v:#%v,#%v", o.FilePath, i, j))
 	cmd.Stderr = os.Stdout
 	out, err := cmd.Output()
 	if err != nil {
