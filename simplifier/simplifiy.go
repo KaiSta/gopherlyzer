@@ -159,7 +159,7 @@ func (s *Simplifier) handleUnaryExpr(n *ast.UnaryExpr) (bool, Operation) {
 	var resOps Operation
 	if n.Op == token.ARROW {
 		pos := s.FSet.Position(n.OpPos).Offset
-		oraclePath := "oracle"
+		oraclePath := "guru"
 
 		oracle := oracler.New(oraclePath, s.Path, "./"+filepath.Dir(s.Path))
 
@@ -181,7 +181,7 @@ func (s *Simplifier) handleUnaryExpr(n *ast.UnaryExpr) (bool, Operation) {
 
 func (s *Simplifier) handleSend(n *ast.SendStmt) (bool, Operation) {
 	pos := s.FSet.Position(n.Arrow).Offset
-	oraclePath := "oracle"
+	oraclePath := "guru"
 
 	oracle := oracler.New(oraclePath, s.Path, "./"+filepath.Dir(s.Path))
 	p := oracle.GetPeers("json", pos)
@@ -201,7 +201,7 @@ func (s *Simplifier) handleSend(n *ast.SendStmt) (bool, Operation) {
 
 func (s *Simplifier) handleClose(n *ast.CallExpr) (bool, Operation) {
 	pos := s.FSet.Position(n.Lparen).Offset
-	oraclePath := "oracle"
+	oraclePath := "guru"
 
 	oracle := oracler.New(oraclePath, s.Path, "./"+filepath.Dir(s.Path))
 	p := oracle.GetPeers("json", pos+1)
