@@ -191,7 +191,7 @@ func (mach *machine2) syncAble() ([]SyncPoint, map[int][]types.R) {
 			count++
 		}
 	}
-
+	// nothing is executable anymore and there are loopstoppers, deriv the loopstoppers, check if the thread is nullable afterwards
 	if count == len(syncpoints) && len(loopstopper) > 0 {
 		mach.Threads[loopstopper[0].T1Id] = mach.Threads[loopstopper[0].T1Id].Deriv(loopstopper[0].Symbol)
 		p := mach.PMap[loopstopper[0].Symbol]

@@ -9,6 +9,9 @@ func main() {
 	x := make(chan int)
 	go foo(x)
 	x <- 42
-	close(x)
+	if 5 > 8 {
+		close(x)
+	}
+
 	//x <- 42
 }
