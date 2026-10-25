@@ -21,18 +21,29 @@ examples.
 
 ## How to use
 
-Configure the Go environment:
-
-export GOROOT=/usr/local/go
-
-export GOPATH=`*path_to_workspace*`/bin
-
-export PATH=$GOROOT/bin:$GOPATH/bin:$PATH
-
-Install Go Guru:
-
-go get golang.org/x/tools/cmd/guru
+gopherlyzer is a Go module and needs no external tools installed. It requires Go 1.26 or newer.
 
 Running gopherlyzer:
 
-go run main.go -p benchmarks/philo/main.go 
+go run . -p benchmarks/philo/main.go
+
+Or build it first:
+
+go build -o gopherlyzer .
+./gopherlyzer -p benchmarks/philo/main.go
+
+## Channel analysis backend
+
+Resolving a channel operation to the channel it uses (needed to pair sends with
+receives) was originally done by shelling out to the `peers` query of
+`golang.org/x/tools/cmd/guru`. That query was removed upstream (see
+[Go issue #59676](https://github.com/golang/go/issues/59676)), and the last
+release that still implemented it no longer builds with a current Go
+toolchain.
+
+On 2026-10-25 guru was replaced by an in-process resolver in `oracleAPI`, built
+on `go/packages` and `go/types`. For a send, receive or `close` it reports the
+`make(chan ...)` site the channel originates from, following variables,
+parameters through their call sites and struct fields within the analysed
+package. Channels that arrive from another package, through a function value or
+an interface are not tracked and simply yield no allocation site.

@@ -3,9 +3,9 @@ package febuilder
 import (
 	"fmt"
 
-	"../algorithm"
-	"../simplifier"
-	"../types"
+	"github.com/KaiSta/gopherlyzer/algorithm"
+	"github.com/KaiSta/gopherlyzer/simplifier"
+	"github.com/KaiSta/gopherlyzer/types"
 )
 
 type state struct {

@@ -5,10 +5,9 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"path/filepath"
 	"reflect"
 
-	"../oracleAPI"
+	"github.com/KaiSta/gopherlyzer/oracleAPI"
 )
 
 type Simplifier struct {
@@ -159,11 +158,10 @@ func (s *Simplifier) handleUnaryExpr(n *ast.UnaryExpr) (bool, Operation) {
 	var resOps Operation
 	if n.Op == token.ARROW {
 		pos := s.FSet.Position(n.OpPos).Offset
-		oraclePath := "guru"
 
-		oracle := oracler.New(oraclePath, s.Path, "./"+filepath.Dir(s.Path))
+		oracle := oracler.New(s.Path)
 
-		p := oracle.GetPeers("json", pos)
+		p := oracle.GetPeers(pos)
 
 		res := false
 		resOps.Type = "Op"
@@ -181,10 +179,9 @@ func (s *Simplifier) handleUnaryExpr(n *ast.UnaryExpr) (bool, Operation) {
 
 func (s *Simplifier) handleSend(n *ast.SendStmt) (bool, Operation) {
 	pos := s.FSet.Position(n.Arrow).Offset
-	oraclePath := "guru"
 
-	oracle := oracler.New(oraclePath, s.Path, "./"+filepath.Dir(s.Path))
-	p := oracle.GetPeers("json", pos)
+	oracle := oracler.New(s.Path)
+	p := oracle.GetPeers(pos)
 	//	fmt.Println("SEND", pos, p.PeerEntries.Allocs)
 
 	res := false
@@ -201,10 +198,9 @@ func (s *Simplifier) handleSend(n *ast.SendStmt) (bool, Operation) {
 
 func (s *Simplifier) handleClose(n *ast.CallExpr) (bool, Operation) {
 	pos := s.FSet.Position(n.Lparen).Offset
-	oraclePath := "guru"
 
-	oracle := oracler.New(oraclePath, s.Path, "./"+filepath.Dir(s.Path))
-	p := oracle.GetPeers("json", pos+1)
+	oracle := oracler.New(s.Path)
+	p := oracle.GetPeers(pos + 1)
 
 	//	fmt.Println("CLOSE", pos, p.PeerEntries.Allocs)
 

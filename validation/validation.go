@@ -1,7 +1,7 @@
 package validation
 
 import (
-	"../types"
+	"github.com/KaiSta/gopherlyzer/types"
 	//"bufio"
 	"fmt"
 	//"os"

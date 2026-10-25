@@ -4,12 +4,11 @@ import (
 	"flag"
 	"fmt"
 
-	"./simplifier"
-	//"./types"
+	"github.com/KaiSta/gopherlyzer/FEBuilder"
+	"github.com/KaiSta/gopherlyzer/simplifier"
+	//"github.com/KaiSta/gopherlyzer/types"
+	"github.com/KaiSta/gopherlyzer/validation"
 	"time"
-
-	"./FEBuilder"
-	"./validation"
 )
 
 func main() {

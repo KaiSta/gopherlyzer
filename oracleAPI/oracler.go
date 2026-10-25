@@ -1,34 +1,32 @@
+// Package oracler answers questions about channel operations in Go source
+// files.
+//
+// Earlier versions of gopherlyzer answered these questions by shelling out to
+// `guru peers`. That query was removed from golang.org/x/tools (Go issue
+// #59676) and the last release that still implemented it no longer builds with
+// a current toolchain, so the query is answered in-process on top of
+// go/packages and go/types; see resolve.go.
 package oracler
 
 import (
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
-	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 )
 
+// OracleAPI resolves channel operations of a single source file.
 type OracleAPI struct {
-	FilePath   string
-	Src        string
-	OraclePath string
-	RootPath   string
+	FilePath string
 }
+
+// PeersMode mirrors the JSON envelope of guru's peers query.
 type PeersMode struct {
 	Mode        string `json:"mode"`
 	PeerEntries Peers  `json:"peers"`
 }
-type DefinitionMode struct {
-	Mode       string     `json:"mode"`
-	Definition Definition `json:"definition"`
-}
 
-type Definition struct {
-	ObjPos string `json:"objpos"`
-	Desc   string `json:"desc"`
-}
+// Peers mirrors the JSON payload of guru's peers query. Only Allocs is
+// populated: the make(chan ...) call sites the queried channel may originate
+// from. Sends and Receives are kept so the shape stays familiar.
 type Peers struct {
 	Pos      string   `json:"pos"`
 	Type     string   `json:"type"`
@@ -37,137 +35,44 @@ type Peers struct {
 	Receives []string `json:"receives"`
 }
 
-func New(oraclepath, filepath, rootpath string) *OracleAPI {
-	data, err := ioutil.ReadFile(filepath)
-	if err != nil {
-		panic(err)
-	}
-
-	return &OracleAPI{filepath, string(data), oraclepath, rootpath}
+// New returns an oracle for the given source file.
+func New(filePath string) *OracleAPI {
+	return &OracleAPI{FilePath: filePath}
 }
 
-func (o *OracleAPI) GetPeers(format string, charpos int) PeersMode {
-	cmd := exec.Command(o.OraclePath,
-		fmt.Sprintf("-%v", format), fmt.Sprintf("-scope=%s", o.RootPath),
-		"peers",
-		fmt.Sprintf("%v:#%v", o.FilePath, charpos))
+// GetPeers resolves the channel operation at byte offset charpos to the
+// make(chan ...) sites that created its channel. Entries in Allocs are
+// formatted "file:line:column"; parse them with LineNColumn.
+//
+// If the operation or its channel cannot be resolved, Allocs is empty; the
+// caller treats that as "no channel operation here".
+func (o *OracleAPI) GetPeers(charpos int) PeersMode {
+	peers := Peers{Pos: strconv.Itoa(charpos)}
 
-	cmd.Stderr = os.Stdout
-
-	out, err := cmd.Output()
-
+	idx, err := indexFor(o.FilePath)
 	if err != nil {
-		panic(err)
+		// Already reported once per file by indexFor.
+		return PeersMode{Mode: "peers", PeerEntries: peers}
 	}
 
-	r := strings.NewReader(string(out))
-
-	var peers PeersMode
-	if err := json.NewDecoder(r).Decode(&peers.PeerEntries); err != nil {
-		panic(err)
+	operand, ok := idx.channelOperandAt(o.FilePath, charpos)
+	if !ok {
+		return PeersMode{Mode: "peers", PeerEntries: peers}
 	}
 
-	return peers
+	peers.Allocs = idx.resolve(operand)
+	return PeersMode{Mode: "peers", PeerEntries: peers}
 }
 
+// LineNColumn extracts the line and column from a "file:line:column" position.
+// Everything before the final two colon-separated fields is ignored, so
+// absolute paths and Windows drive letters are handled.
 func (o *OracleAPI) LineNColumn(text string) (line, column int64) {
-	split := strings.Split(text, ":")
-	correction := 0
-
-	_, err := strconv.ParseInt(split[1], 10, 32)
-
-	if err != nil {
-		correction++
+	parts := strings.Split(text, ":")
+	if len(parts) < 2 {
+		return 0, 0
 	}
-
-	l, err := strconv.ParseInt(split[1+correction], 10, 32)
-	if err != nil {
-		panic(err)
-	}
-	c, err := strconv.ParseInt(split[2+correction], 10, 32)
-	if err != nil {
-		panic(err)
-	}
-
-	return l, c
-}
-
-func (o *OracleAPI) GetOffset(line, column int64) int64 {
-	currLine := 0
-	currCol := 0
-	for i, c := range o.Src {
-		if int64(currLine) == line-1 && int64(currCol) == column {
-			return int64(i)
-		}
-
-		if c == '\n' {
-			currLine++
-			currCol = 0
-		} else {
-			currCol++
-		}
-	}
-	return -1
-}
-
-func (o *OracleAPI) FindDefinition(line int64) int64 {
-	currLine := 0
-	currCol := 0
-	for i, c := range o.Src {
-		if int64(currLine) == line-1 {
-			for j := i; j < len(o.Src); j++ {
-				if o.Src[j] == '=' || o.Src[j] == ':' {
-					return int64(j)
-				}
-			}
-			return -1
-		}
-
-		if c == '\n' {
-			currLine++
-			currCol = 0
-		} else {
-			currCol++
-		}
-	}
-	return -1
-}
-
-func (o *OracleAPI) FindVariableName(line int64) string {
-
-	i := o.GetOffset(line, 0)
-	j := o.FindDefinition(line)
-
-	cmd := exec.Command(o.OraclePath,
-		"-json", fmt.Sprintf("-scope=%v", o.RootPath),
-		"definition",
-		fmt.Sprintf("%v:#%v,#%v", o.FilePath, i, j))
-
-	cmd.Stderr = os.Stdout
-	out, err := cmd.Output()
-
-	if err != nil {
-		panic(err)
-	}
-
-	r := strings.NewReader(string(out))
-
-	var def DefinitionMode
-	if err := json.NewDecoder(r).Decode(&def); err != nil {
-		panic(err)
-	}
-
-	return def.Definition.Desc
-}
-
-func (o *OracleAPI) SimplifiedVarDesc(line string) string {
-
-	if strings.Contains(line, ".") {
-		s1 := strings.Split(line, ".")
-		s2 := strings.Split(s1[1], " ")
-		return s2[0]
-	}
-	s1 := strings.Split(line, " ")
-	return s1[1]
-
+	line, _ = strconv.ParseInt(parts[len(parts)-2], 10, 32)
+	column, _ = strconv.ParseInt(parts[len(parts)-1], 10, 32)
+	return line, column
 }
